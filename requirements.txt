@@ -1,0 +1,6 @@
+fastapi
+uvicorn
+vllm[openai]
+transformers
+torch
+accelerate
