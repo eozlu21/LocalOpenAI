@@ -1,124 +1,109 @@
-# 📃 LocalOpenAI — OpenAI-Compatible Local API Server (Qwen-based)
+# LocalOpenAI - OpenAI-Compatible Local API Server
 
-This project serves a Qwen model locally using `FastAPI` and exposes a REST API compatible with the OpenAI `ChatCompletion` interface (`/v1/chat/completions`). You can use it with `curl`, Postman, or the official OpenAI Python client.
+A lightweight FastAPI server that exposes local language models (Phi-4, Qwen, etc.) through OpenAI's ChatCompletion API interface. Built with vLLM for efficient inference.
 
----
+## Features
 
-## 🚀 Features
+- **OpenAI-compatible API**: Drop-in replacement for OpenAI's `/v1/chat/completions` endpoint
+- **Local inference**: Run models entirely on your hardware
+- **Multi-user support**: Handle concurrent requests
+- **Flexible models**: Support for Hugging Face transformers (default: Phi-4-mini-instruct)
 
-* Uses [Qwen1.5-4B](https://huggingface.co/Qwen/Qwen1.5-4B) or any Hugging Face-compatible model.
-* REST API mimics OpenAI's `chat/completions` endpoint.
-* Can be used by multiple users or clients (e.g. via `openai.ChatCompletion.create()`).
-* FastAPI + vLLM backend.
-* Designed for HPC clusters or local development environments.
+## Quick Start
 
----
+### Server Setup
 
-## 📁 Directory Structure
-
-```
-LocalOpenAI/
-├── app/
-│   ├── main.py           # FastAPI server
-│   ├── openai_api.py     # OpenAI-compatible endpoint
-│   └── model.py          # Qwen model interface (via vLLM)
-├── requirements.txt
-├── start_server.sh       # Launch server with logs
-└── README.md             # This file
-```
-
----
-
-## 🔧 Step 1: Set Up Environment (Micromamba)
-
-> Micromamba is preferred for isolated, fast Python environments.
-
+1. **Install dependencies**:
 ```bash
-# Optional: Add micromamba to your PATH if not already
-export PATH=~/micromamba/bin:$PATH
-
-# Create environment
-micromamba create -n localopenai python=3.10 -y
-micromamba activate localopenai
-
-# Install dependencies
 pip install -r requirements.txt
 ```
 
----
-
-## 🧠 Step 2: Start the Model Server
-
-You must launch this from a compute node (e.g. `ai21`):
-
+2. **Start the server**:
 ```bash
 ./start_server.sh
 ```
 
-This runs:
+The server will run on `http://localhost:8000` (or `0.0.0.0:8000` for network access).
 
-```bash
-uvicorn app.main:app --host 0.0.0.0 --port 8000
-```
+### Client Usage
 
-You should see:
-
-```
-Uvicorn running on http://0.0.0.0:8000
-```
-
----
-
-## 📬 Step 3: Send Requests (via `curl` or OpenAI client)
-
-### ✅ Using `curl` (from another node like login02):
-
-```bash
-curl http://ai21.kuvalar.ku.edu.tr:8000/v1/chat/completions \
-  -H "Content-Type: application/json" \
-  -d '{"model": "Qwen1.5-4B", "messages": [{"role": "user", "content": "Tell me a joke."}]}'
-```
-
----
-
-### ✅ Using OpenAI Python Client:
-
+#### Option 1: OpenAI Python Client
 ```python
-import openai
+from openai import OpenAI
 
-openai.api_key = "not-needed"
-openai.base_url = "http://ai21.kuvalar.ku.edu.tr:8000/v1"
-
-response = openai.ChatCompletion.create(
-    model="Qwen1.5-4B",
-    messages=[
-        {"role": "system", "content": "You are a helpful assistant."},
-        {"role": "user", "content": "Who won the World Cup in 2022?"}
-    ]
+client = OpenAI(
+    api_key="not-needed",
+    base_url="http://localhost:8000/v1"
 )
 
-print(response.choices[0].message["content"])
+response = client.chat.completions.create(
+    model="microsoft/Phi-4-mini-instruct",
+    messages=[
+        {"role": "system", "content": "You are a helpful assistant."},
+        {"role": "user", "content": "Explain quantum computing briefly."}
+    ],
+    temperature=0.7,
+    max_tokens=256
+)
+
+print(response.choices[0].message.content)
 ```
 
----
+#### Option 2: cURL
+```bash
+curl http://localhost:8000/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "microsoft/Phi-4-mini-instruct",
+    "messages": [
+      {"role": "user", "content": "What is machine learning?"}
+    ],
+    "temperature": 0.7,
+    "max_tokens": 256
+  }'
+```
 
-## 🔍 Troubleshooting
+## Configuration
 
-* **`curl` hangs or shows `>` prompt** → Make sure your JSON is valid and single-quoted properly.
-* **`Connection refused`** → Ensure the server is running on the correct node with `--host 0.0.0.0`.
-* **No response or empty message** → Check logs in the terminal running `start_server.sh`.
+### Changing Models
+Edit `app/model.py` and modify the `model_name` parameter:
+```python
+def __init__(self, model_name="your-preferred-model"):
+```
 
----
+### API Parameters
+- `temperature`: Controls randomness (0.0-2.0)
+- `max_tokens`: Maximum response length
+- `stop`: Stop sequences to end generation
+- `model`: Model identifier (informational)
 
-## ✉️ Contributing
+## Project Structure
 
-Pull requests and improvements are welcome. For issues or feature requests, please open a GitHub issue.
+```
+LocalOpenAI/
+├── app/
+│   ├── main.py           # FastAPI application
+│   ├── openai_api.py     # OpenAI-compatible endpoints
+│   └── model.py          # Model loading and inference
+├── example/
+│   └── client.py         # Example client usage
+├── requirements.txt      # Dependencies
+├── start_server.sh       # Server launcher
+└── README.md
+```
 
----
+## Requirements
 
-## 🙏 Acknowledgements
+- Python 3.10+
+- CUDA-compatible GPU (recommended)
+- 8GB+ RAM for Phi-4-mini-instruct
 
-* [Qwen Model](https://huggingface.co/Qwen)
-* [vLLM Project](https://github.com/vllm-project/vllm)
-* [FastAPI](https://fastapi.tiangolo.com)
-* OpenAI Python SDK
+## Troubleshooting
+
+- **Port conflicts**: Change port in `start_server.sh`
+- **Memory issues**: Try smaller models or reduce `max_tokens`
+- **Connection refused**: Ensure server is running and accessible
+
+## License
+
+Open source - contributions welcome!
