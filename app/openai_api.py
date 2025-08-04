@@ -1,6 +1,8 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
 from typing import List, Optional, Literal
+import asyncio
+import time
 
 from vllm import SamplingParams
 from app.model import QwenLocalModel
@@ -17,10 +19,10 @@ class ChatCompletionRequest(BaseModel):
     messages: List[Message]
     temperature: float = 0.7
     max_tokens: Optional[int] = 512
-    stop: Optional[List[str]] = None  # NEW
+    stop: Optional[List[str]] = None
 
 @router.post("/v1/chat/completions")
-def chat_completions(req: ChatCompletionRequest):
+async def chat_completions(req: ChatCompletionRequest):
     prompt = ""
     for m in req.messages:
         if m.role == "system":
@@ -38,12 +40,14 @@ def chat_completions(req: ChatCompletionRequest):
         max_tokens=req.max_tokens,
         stop=req.stop or ["[User]:"]
     )
-    result = model.generate(prompt, params)
+    
+    # Run the model generation asynchronously
+    result = await model.generate_async(prompt, params)
 
     return {
         "id": "chatcmpl-local-qwen",
         "object": "chat.completion",
-        "created": 1234567890,
+        "created": int(time.time()),
         "model": req.model,
         "choices": [
             {
