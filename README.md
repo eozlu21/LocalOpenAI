@@ -14,9 +14,10 @@ A lightweight FastAPI server that exposes local language models (Qwen, Phi-4, et
 ### Server Setup
 
 1. **Install dependencies**:
-```bash
-pip install -r requirements.txt
-```
+
+    ```bash
+    pip install -r requirements.txt
+    ```
 
 2. **Start the server (basic)**:
 ```bash
@@ -47,6 +48,7 @@ export LOCAL_OPENAI_TP=2
 ### Client Usage
 
 #### Option 1: OpenAI Python Client
+
 ```python
 from openai import OpenAI
 
@@ -69,6 +71,7 @@ print(response.choices[0].message.content)
 ```
 
 #### Option 2: cURL
+
 ```bash
 curl http://localhost:8001/v1/chat/completions \
   -H "Content-Type: application/json" \
@@ -81,6 +84,73 @@ curl http://localhost:8001/v1/chat/completions \
     "max_tokens": 256
   }'
 ```
+
+## Updated Client Usage
+
+### Async Python Client
+
+The client now supports asynchronous requests for better performance and scalability. Here's how to use it:
+
+```python
+import asyncio
+from openai import AsyncOpenAI
+
+# === Configuration ===
+API_BASE = "http://localhost:8000/v1"
+MODEL    = "microsoft/Phi-4-mini-instruct"
+
+# === Instantiate async client ===
+client = AsyncOpenAI(
+    api_key="not-needed",    # ignored by local server
+    base_url=API_BASE,       # points to your FastAPI endpoint
+)
+
+async def make_request():
+    """Async function to make the API request"""
+    response = await client.chat.completions.create(
+        model=MODEL,
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user",   "content": "Tell me a joke."}
+        ],
+        temperature=0.7,
+        max_tokens=256,
+        stop=["\n[User]:"]
+    )
+    
+    print(response.choices[0].message.content)
+    return response
+
+async def main():
+    response = await make_request()
+    print(f"Request completed. Model used: {response.model}")
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```
+
+### Parallel Requests
+
+You can also make multiple concurrent requests to test parallel processing:
+
+```python
+async def make_parallel_requests():
+    prompts = [
+        "Tell me a joke.",
+        "What's the weather like?",
+        "Explain quantum computing in simple terms.",
+        "Write a short poem about programming.",
+        "What's the capital of France?"
+    ]
+
+    tasks = [make_request(prompt, i+1) for i, prompt in enumerate(prompts)]
+    responses = await asyncio.gather(*tasks)
+
+    for response in responses:
+        print(response.choices[0].message.content)
+```
+
+This demonstrates the power of async operations for handling multiple requests efficiently.
 
 ## Configuration
 
@@ -101,6 +171,7 @@ Notes:
 - If omitted, tensor parallel is only set if you passed `--gpus`; otherwise vLLM defaults to single GPU.
 
 ### API Parameters
+
 - `temperature`: Controls randomness (0.0-2.0)
 - `max_tokens`: Maximum response length
 - `stop`: Stop sequences to end generation
