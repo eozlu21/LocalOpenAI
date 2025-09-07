@@ -1,13 +1,13 @@
 # LocalOpenAI - OpenAI-Compatible Local API Server
 
-A lightweight FastAPI server that exposes local language models (Phi-4, Qwen, etc.) through OpenAI's ChatCompletion API interface. Built with vLLM for efficient inference.
+A lightweight FastAPI server that exposes local language models (Qwen, Phi-4, etc.) through OpenAI's ChatCompletion API interface. Built with vLLM for efficient inference.
 
 ## Features
 
 - **OpenAI-compatible API**: Drop-in replacement for OpenAI's `/v1/chat/completions` endpoint
 - **Local inference**: Run models entirely on your hardware
 - **Multi-user support**: Handle concurrent requests
-- **Flexible models**: Support for Hugging Face transformers (default: Phi-4-mini-instruct)
+- **Flexible models**: Support for Hugging Face transformers (default: Qwen/Qwen2.5-32B-Instruct)
 
 ## Quick Start
 
@@ -18,12 +18,31 @@ A lightweight FastAPI server that exposes local language models (Phi-4, Qwen, et
 pip install -r requirements.txt
 ```
 
-2. **Start the server**:
+2. **Start the server (basic)**:
 ```bash
 ./start_server.sh
 ```
 
-The server will run on `http://localhost:8000` (or `0.0.0.0:8000` for network access).
+The server will run on `http://localhost:8001` (or `0.0.0.0:8001`).
+
+3. **Start with custom model / GPU count / port**:
+```bash
+./start_server.sh \
+  --model Qwen/Qwen2.5-32B-Instruct \
+  --gpus 2 \
+  --port 9000
+```
+Flags:
+- `--model` Hugging Face model id (sets `LOCAL_OPENAI_MODEL`)
+- `--gpus` Tensor parallel size (sets `LOCAL_OPENAI_TP`)
+- `--port` HTTP port (default 8001)
+
+Environment variable equivalents (optional):
+```bash
+export LOCAL_OPENAI_MODEL=Qwen/Qwen2.5-32B-Instruct
+export LOCAL_OPENAI_TP=2
+./start_server.sh
+```
 
 ### Client Usage
 
@@ -32,8 +51,8 @@ The server will run on `http://localhost:8000` (or `0.0.0.0:8000` for network ac
 from openai import OpenAI
 
 client = OpenAI(
-    api_key="not-needed",
-    base_url="http://localhost:8000/v1"
+  api_key="not-needed",
+  base_url="http://localhost:8001/v1"
 )
 
 response = client.chat.completions.create(
@@ -51,7 +70,7 @@ print(response.choices[0].message.content)
 
 #### Option 2: cURL
 ```bash
-curl http://localhost:8000/v1/chat/completions \
+curl http://localhost:8001/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
     "model": "microsoft/Phi-4-mini-instruct",
@@ -65,11 +84,21 @@ curl http://localhost:8000/v1/chat/completions \
 
 ## Configuration
 
-### Changing Models
-Edit `app/model.py` and modify the `model_name` parameter:
-```python
-def __init__(self, model_name="your-preferred-model"):
+### Changing Models & GPU Count
+Prefer the CLI:
+```bash
+./start_server.sh --model mistralai/Mistral-7B-Instruct-v0.3 --gpus 4
 ```
+Or environment variables:
+```bash
+export LOCAL_OPENAI_MODEL=mistralai/Mistral-7B-Instruct-v0.3
+export LOCAL_OPENAI_TP=4
+./start_server.sh
+```
+Notes:
+- The `model` field you send in the request body is informational; the actually loaded model is set at startup.
+- `--gpus/LOCAL_OPENAI_TP` configures vLLM `tensor_parallel_size` (must not exceed visible CUDA devices).
+- If omitted, tensor parallel is only set if you passed `--gpus`; otherwise vLLM defaults to single GPU.
 
 ### API Parameters
 - `temperature`: Controls randomness (0.0-2.0)
@@ -96,13 +125,14 @@ LocalOpenAI/
 
 - Python 3.10+
 - CUDA-compatible GPU (recommended)
-- 8GB+ RAM for Phi-4-mini-instruct
+- Adequate GPU memory for chosen model (e.g., 7B models typically require ≥14–16GB total across GPUs)
 
 ## Troubleshooting
 
-- **Port conflicts**: Change port in `start_server.sh`
+- **Port conflicts**: Use `--port` flag
 - **Memory issues**: Try smaller models or reduce `max_tokens`
 - **Connection refused**: Ensure server is running and accessible
+ - **Wrong model in responses**: Confirm you started server with `--model`; request body `model` does not trigger reloading.
 
 ## License
 

@@ -2,7 +2,7 @@ import asyncio
 from openai import AsyncOpenAI
 
 # === Configuration ===
-API_BASE = "http://ai21.kuvalar.ku.edu.tr:8000/v1"
+API_BASE = "http://ai18.kuvalar.ku.edu.tr:8000/v1"
 MODEL    = "microsoft/Phi-4-mini-instruct"
 
 # === Instantiate async client ===
