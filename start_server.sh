@@ -3,7 +3,7 @@ set -euo pipefail
 
 MODEL=""
 GPUS=""
-PORT=8001
+PORT=8000
 
 while [[ $# -gt 0 ]]; do
 	case "$1" in

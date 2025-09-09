@@ -1,0 +1,5 @@
+[batch] Job 376233 starting on ai25.kuvalar.ku.edu.tr at Tue Sep  9 02:18:52 +03 2025
+[batch] Working directory: /home/eozlu21/LocalOpenAI
+[batch] Found micromamba: /home/eozlu21/micromamba/bin/micromamba
+[batch] Python: /home/eozlu21/micromamba/envs/localopenai/bin/python
+Python 3.10.18
